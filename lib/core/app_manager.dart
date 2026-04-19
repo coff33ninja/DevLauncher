@@ -1,16 +1,58 @@
 import 'package:device_apps/device_apps.dart';
 import 'package:flutter/foundation.dart';
+import 'preferences_manager.dart';
 
 /// Manages installed applications on the device
 class AppManager extends ChangeNotifier {
+  final PreferencesManager _prefsManager;
+
   List<Application> _apps = [];
   List<Application> _filteredApps = [];
   bool _isLoading = false;
   String _searchQuery = '';
 
+  AppManager(this._prefsManager);
+
   List<Application> get apps => _filteredApps;
   bool get isLoading => _isLoading;
   String get searchQuery => _searchQuery;
+
+  /// Get favorite apps
+  List<Application> getFavoriteApps() {
+    final favoritePackages = _prefsManager.getFavoriteApps();
+    return _apps
+        .where((app) => favoritePackages.contains(app.packageName))
+        .toList();
+  }
+
+  /// Get recent apps
+  List<Application> getRecentApps() {
+    final recentPackages = _prefsManager.getRecentApps();
+    final recentApps = <Application>[];
+
+    // Maintain order from preferences
+    for (final packageName in recentPackages) {
+      try {
+        final app = _apps.firstWhere((app) => app.packageName == packageName);
+        recentApps.add(app);
+      } catch (e) {
+        // App not found, skip
+      }
+    }
+
+    return recentApps;
+  }
+
+  /// Check if app is favorite
+  bool isFavorite(String packageName) {
+    return _prefsManager.isFavorite(packageName);
+  }
+
+  /// Toggle favorite status
+  Future<void> toggleFavorite(String packageName) async {
+    await _prefsManager.toggleFavorite(packageName);
+    notifyListeners();
+  }
 
   /// Load all installed applications
   Future<void> loadApps() async {
@@ -60,7 +102,12 @@ class AppManager extends ChangeNotifier {
   /// Launch an application
   Future<bool> launchApp(String packageName) async {
     try {
-      return await DeviceApps.openApp(packageName);
+      final success = await DeviceApps.openApp(packageName);
+      if (success) {
+        // Add to recent apps
+        await _prefsManager.addRecentApp(packageName);
+      }
+      return success;
     } catch (e) {
       debugPrint('Error launching app: $e');
       return false;

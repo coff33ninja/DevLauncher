@@ -2,18 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/app_manager.dart';
+import 'core/preferences_manager.dart';
 import 'ui/screens/app_drawer_screen.dart';
 import 'ui/widgets/app_list_item.dart';
+import 'ui/widgets/favorite_apps_row.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize preferences
+  final prefsManager = PreferencesManager();
+  await prefsManager.init();
 
   // Make the app fullscreen and hide system UI
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => AppManager())],
+      providers: [
+        Provider<PreferencesManager>.value(value: prefsManager),
+        ChangeNotifierProvider(create: (context) => AppManager(prefsManager)),
+      ],
       child: const DevLauncherApp(),
     ),
   );
@@ -55,7 +64,7 @@ class _LauncherHomeState extends State<LauncherHome> {
     super.initState();
     // Load apps on startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AppManager>().loadApps();
+      Provider.of<AppManager>(context, listen: false).loadApps();
     });
   }
 
@@ -70,7 +79,7 @@ class _LauncherHomeState extends State<LauncherHome> {
       _showSearch = !_showSearch;
       if (!_showSearch) {
         _searchController.clear();
-        context.read<AppManager>().searchApps('');
+        Provider.of<AppManager>(context, listen: false).searchApps('');
       }
     });
   }
@@ -89,33 +98,73 @@ class _LauncherHomeState extends State<LauncherHome> {
           children: [
             // Main launcher content
             Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.rocket_launch,
-                    size: 80,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Dev Launcher',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.rocket_launch,
+                      size: 80,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Swipe up to search',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Dev Launcher',
+                      style: Theme.of(context).textTheme.headlineLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  const SizedBox(height: 48),
-                  _buildQuickActions(context),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      'Swipe up to search',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+
+                    // Favorite apps section
+                    Consumer<AppManager>(
+                      builder: (context, appManager, child) {
+                        final favoriteApps = appManager.getFavoriteApps();
+                        return Column(
+                          children: [
+                            if (favoriteApps.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  left: 16,
+                                  bottom: 8,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Favorites',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            FavoriteAppsRow(
+                              apps: favoriteApps,
+                              onAppTap: (packageName) async {
+                                await appManager.launchApp(packageName);
+                              },
+                              onAppLongPress: (packageName) {
+                                _showAppOptions(context, packageName);
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+                    _buildQuickActions(context),
+                  ],
+                ),
               ),
             ),
 
@@ -204,11 +253,17 @@ class _LauncherHomeState extends State<LauncherHome> {
                         filled: true,
                       ),
                       onChanged: (query) {
-                        context.read<AppManager>().searchApps(query);
+                        Provider.of<AppManager>(
+                          context,
+                          listen: false,
+                        ).searchApps(query);
                       },
                       onSubmitted: (value) {
                         // Launch first result if available
-                        final appManager = context.read<AppManager>();
+                        final appManager = Provider.of<AppManager>(
+                          context,
+                          listen: false,
+                        );
                         if (appManager.apps.isNotEmpty) {
                           appManager.launchApp(
                             appManager.apps.first.packageName,
@@ -284,13 +339,75 @@ class _LauncherHomeState extends State<LauncherHome> {
                           }
                         },
                         onLongPress: () {
-                          appManager.openAppSettings(app.packageName);
+                          _showAppOptions(context, app.packageName);
                         },
                       );
                     },
                   );
                 },
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAppOptions(BuildContext context, String packageName) {
+    final appManager = Provider.of<AppManager>(context, listen: false);
+    final app = appManager.getApp(packageName);
+    final isFavorite = appManager.isFavorite(packageName);
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (app != null)
+              ListTile(
+                title: Text(
+                  app.appName,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                subtitle: Text(
+                  packageName,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            const Divider(),
+            ListTile(
+              leading: Icon(isFavorite ? Icons.star : Icons.star_border),
+              title: Text(
+                isFavorite ? 'Remove from favorites' : 'Add to favorites',
+              ),
+              onTap: () async {
+                await appManager.toggleFavorite(packageName);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isFavorite
+                            ? 'Removed from favorites'
+                            : 'Added to favorites',
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('App info'),
+              onTap: () async {
+                Navigator.pop(context);
+                await appManager.openAppSettings(packageName);
+              },
             ),
           ],
         ),
