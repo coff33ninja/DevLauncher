@@ -34,7 +34,9 @@ fun DevLauncherTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        // dynamicColor is available from Android 12 (S) onwards.
+        // Since minSdk is 33 (Android 13), Build.VERSION.SDK_INT >= S is always true.
+        dynamicColor -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
@@ -46,8 +48,15 @@ fun DevLauncherTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            
+            // Note: window.statusBarColor and window.navigationBarColor are technically deprecated 
+            // in favor of WindowInsetsController for controlling appearance, but setting them 
+            // to transparent is still the standard way to enable edge-to-edge backgrounds.
+            // These warnings can be ignored or suppressed as this is the intended launcher behavior.
+            
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !darkTheme
+            insetsController.isAppearanceLightNavigationBars = !darkTheme
         }
     }
 

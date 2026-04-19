@@ -1,11 +1,14 @@
 package com.devlauncher.ui
 
 import android.app.Application
+import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.devlauncher.LauncherApplication
 import com.devlauncher.data.AppInfo
 import com.devlauncher.data.AppRepository
+import com.devlauncher.data.PackageChangeReceiver
 import com.devlauncher.plugin.AppLaunchEvent
 import com.devlauncher.plugin.CommandResult
 import com.devlauncher.plugin.RegisteredCommand
@@ -40,9 +43,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     
     private val _commandResult = MutableStateFlow<CommandResult?>(null)
     val commandResult: StateFlow<CommandResult?> = _commandResult.asStateFlow()
+
+    private val packageReceiver = PackageChangeReceiver {
+        refreshApps()
+    }
     
     init {
         loadApps()
+        // Register for package changes with the required EXPORTED flag for system broadcasts
+        ContextCompat.registerReceiver(
+            application,
+            packageReceiver,
+            PackageChangeReceiver.getIntentFilter(),
+            ContextCompat.RECEIVER_EXPORTED
+        )
     }
     
     /**
@@ -55,7 +69,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 val installedApps = appRepository.getInstalledApps()
                 _apps.value = installedApps
             } catch (e: Exception) {
-                // Handle error
+                Log.e("LauncherViewModel", "Failed to load apps", e)
             } finally {
                 _isLoading.value = false
             }
@@ -92,10 +106,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val results = mutableListOf<SearchResult>()
             
-            // 1. Check for exact command match
+            // 1. Check for exact command match and include arguments in SearchResult
             val (commandName, args) = commandRegistry.parseCommand(query)
             commandRegistry.findCommand(commandName)?.let { registered ->
-                results.add(SearchResult.Command(registered, priority = 100))
+                results.add(SearchResult.Command(registered, args, priority = 100))
             }
             
             // 2. Search apps (fuzzy match)
@@ -104,7 +118,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             
             // 3. Fuzzy search commands
             val matchingCommands = commandRegistry.fuzzySearch(query)
-            results.addAll(matchingCommands.map { SearchResult.Command(it, priority = 30) })
+            results.addAll(matchingCommands.map { SearchResult.Command(it, emptyList(), priority = 30) })
             
             // Sort by priority
             _searchResults.value = results.sortedByDescending { it.priority }
@@ -139,6 +153,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         appRepository.invalidateCache()
         loadApps()
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        getApplication<Application>().unregisterReceiver(packageReceiver)
+    }
 }
 
 /**
@@ -146,5 +165,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
  */
 sealed class SearchResult(open val priority: Int) {
     data class App(val app: AppInfo, override val priority: Int) : SearchResult(priority)
-    data class Command(val registered: RegisteredCommand, override val priority: Int) : SearchResult(priority)
+    data class Command(
+        val registered: RegisteredCommand, 
+        val args: List<String> = emptyList(), 
+        override val priority: Int
+    ) : SearchResult(priority)
 }

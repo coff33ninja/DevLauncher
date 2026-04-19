@@ -2,6 +2,7 @@ package com.devlauncher.ui
 
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -13,6 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,39 +37,60 @@ fun HomeScreen(
     onSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        topBar = {
-            SearchBar(
-                onClick = onSearchClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            )
-        }
-    ) { paddingValues ->
+    // We use a transparent container to see the wallpaper
+    Box(modifier = modifier.fillMaxSize()) {
+        // Scrim overlay to ensure text readability over the wallpaper
         Box(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when {
-                isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.2f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.4f)
+                        )
                     )
-                }
-                apps.isEmpty() -> {
-                    Text(
-                        text = "No apps found",
-                        modifier = Modifier.align(Alignment.Center),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-                else -> {
-                    AppGrid(
-                        apps = apps,
-                        onAppClick = onAppClick
-                    )
+                )
+        )
+
+        Scaffold(
+            containerColor = Color.Transparent, // Make Scaffold transparent to see wallpaper/scrim
+            topBar = {
+                SearchBar(
+                    onClick = onSearchClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 48.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                when {
+                    isLoading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center),
+                            color = Color.White
+                        )
+                    }
+                    apps.isEmpty() -> {
+                        Text(
+                            text = "No apps found",
+                            modifier = Modifier.align(Alignment.Center),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White
+                        )
+                    }
+                    else -> {
+                        AppGrid(
+                            apps = apps,
+                            onAppClick = onAppClick
+                        )
+                    }
                 }
             }
         }
@@ -84,8 +108,9 @@ fun SearchBar(
     Surface(
         modifier = modifier.clickable(onClick = onClick),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 2.dp
+        color = Color.Black.copy(alpha = 0.5f), // Semi-transparent black
+        tonalElevation = 0.dp,
+        border = null
     ) {
         Row(
             modifier = Modifier
@@ -96,13 +121,13 @@ fun SearchBar(
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Search",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = Color.White
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = "Search apps or type command...",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White.copy(alpha = 0.8f)
             )
         }
     }
@@ -152,7 +177,7 @@ fun AppIcon(
         DrawableImage(
             drawable = app.icon,
             contentDescription = app.appName,
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(56.dp) // Slightly larger icons
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -161,10 +186,12 @@ fun AppIcon(
         Text(
             text = app.appName,
             fontSize = 12.sp,
-            maxLines = 2,
+            maxLines = 1, // Single line looks cleaner for names
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White, // White text to stand out on wallpaper
+            softWrap = false
         )
     }
 }
