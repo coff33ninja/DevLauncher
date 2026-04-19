@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added (Phase 1 Complete!)
 - Initial Flutter project setup with Material 3 dark theme
 - Android launcher manifest configuration (HOME intent)
 - App discovery using device_apps package
@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Quick action chips (Apps, Settings, Plugins)
 - Provider state management integration
 - Fullscreen immersive mode
+- **Favorites system** - Add/remove apps from favorites
+- **Recent apps tracking** - Automatically track launched apps
+- **Home screen favorites display** - Horizontal scrollable row
+- **Persistent storage** - SharedPreferences for user data
+- **Enhanced app options menu** - Favorite toggle + app info
 
 ### Changed
 - Migrated from Kotlin/Jetpack Compose to Flutter
