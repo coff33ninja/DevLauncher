@@ -1,0 +1,16 @@
+- **Launcher**: The Android home screen replacement application
+- **Gemini_Client**: Python service that interfaces with Google Gemini 2.5 Flash API
+- **Key_Manager**: Round-robin API key management system
+- **App_Repository**: Data access layer for installed applications
+- **Context_Analyzer**: Background service that analyzes user context for AI suggestions
+- **Usage_Stats_Collector**: Service that tracks app usage patterns
+- **Settings_Manager**: Service that manages user preferences and configuration
+- **Widget_Host**: Service that manages Android widgets on the home screen
+- **Home_Screen_Manager**: Service that manages multiple home screens and navigation
+- **Speedtest_Service**: Service that performs network speed tests
+- **Terminal_Session**: Service that manages terminal emulator sessions
+- **API_Key**: Google Gemini API authentication key
+- **Round_Robin**: Load distribution algorithm that cycles through available resources sequentially
+- **PTY**: Pseudo-Terminal, a virtual terminal interface for shell processes
+- **Home_Screen**: A single page in the multi-home-screen architecture
+- **Screen_Category**: Classification of home screens (Development, Communication, Productivity, Monitoring, AI Assistant)
