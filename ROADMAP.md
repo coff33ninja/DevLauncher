@@ -4,9 +4,14 @@
 - [x] Flutter project setup
 - [x] Basic launcher UI with search gesture
 - [x] Android manifest configuration for launcher
-- [ ] App discovery and listing
-- [ ] App launching functionality
-- [ ] Basic search/filter
+- [x] App discovery and listing
+- [x] App launching functionality
+- [x] Basic search/filter
+- [x] App drawer with grid view
+- [x] Long press for app info
+- [ ] Favorites/pinned apps
+- [ ] Recent apps
+- [ ] App usage statistics
 
 ## Phase 2: Plugin System
 - [ ] Plugin architecture design

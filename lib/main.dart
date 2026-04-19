@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'core/app_manager.dart';
+import 'ui/screens/app_drawer_screen.dart';
+import 'ui/widgets/app_list_item.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -7,7 +11,12 @@ void main() {
   // Make the app fullscreen and hide system UI
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  runApp(const DevLauncherApp());
+  runApp(
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => AppManager())],
+      child: const DevLauncherApp(),
+    ),
+  );
 }
 
 class DevLauncherApp extends StatelessWidget {
@@ -42,6 +51,15 @@ class _LauncherHomeState extends State<LauncherHome> {
   bool _showSearch = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Load apps on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppManager>().loadApps();
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -52,6 +70,7 @@ class _LauncherHomeState extends State<LauncherHome> {
       _showSearch = !_showSearch;
       if (!_showSearch) {
         _searchController.clear();
+        context.read<AppManager>().searchApps('');
       }
     });
   }
@@ -91,7 +110,7 @@ class _LauncherHomeState extends State<LauncherHome> {
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 48),
@@ -118,9 +137,9 @@ class _LauncherHomeState extends State<LauncherHome> {
           icon: Icons.apps,
           label: 'Apps',
           onTap: () {
-            // TODO: Show app drawer
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('App drawer coming soon')),
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AppDrawerScreen()),
             );
           },
         ),
@@ -129,7 +148,6 @@ class _LauncherHomeState extends State<LauncherHome> {
           icon: Icons.settings,
           label: 'Settings',
           onTap: () {
-            // TODO: Show settings
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Settings coming soon')),
             );
@@ -140,7 +158,6 @@ class _LauncherHomeState extends State<LauncherHome> {
           icon: Icons.extension,
           label: 'Plugins',
           onTap: () {
-            // TODO: Show plugins
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Plugin system coming soon')),
             );
@@ -166,7 +183,7 @@ class _LauncherHomeState extends State<LauncherHome> {
 
   Widget _buildSearchOverlay(BuildContext context) {
     return Container(
-      color: Theme.of(context).colorScheme.surface.withOpacity(0.95),
+      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
       child: SafeArea(
         child: Column(
           children: [
@@ -186,8 +203,18 @@ class _LauncherHomeState extends State<LauncherHome> {
                         ),
                         filled: true,
                       ),
+                      onChanged: (query) {
+                        context.read<AppManager>().searchApps(query);
+                      },
                       onSubmitted: (value) {
-                        // TODO: Handle search
+                        // Launch first result if available
+                        final appManager = context.read<AppManager>();
+                        if (appManager.apps.isNotEmpty) {
+                          appManager.launchApp(
+                            appManager.apps.first.packageName,
+                          );
+                          _toggleSearch();
+                        }
                       },
                     ),
                   ),
@@ -200,37 +227,69 @@ class _LauncherHomeState extends State<LauncherHome> {
               ),
             ),
             Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.search_off,
-                      size: 64,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.3),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No apps installed yet',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.5),
+              child: Consumer<AppManager>(
+                builder: (context, appManager, child) {
+                  if (appManager.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (appManager.apps.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.3),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            appManager.searchQuery.isEmpty
+                                ? 'No apps found'
+                                : 'No results for "${appManager.searchQuery}"',
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.5),
+                                ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'App discovery coming soon',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.3),
-                      ),
-                    ),
-                  ],
-                ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: appManager.apps.length,
+                    itemBuilder: (context, index) {
+                      final app = appManager.apps[index];
+                      return AppListItem(
+                        app: app,
+                        onTap: () async {
+                          final launched = await appManager.launchApp(
+                            app.packageName,
+                          );
+                          if (launched) {
+                            _toggleSearch();
+                          } else if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Failed to launch ${app.appName}',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        onLongPress: () {
+                          appManager.openAppSettings(app.packageName);
+                        },
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],
