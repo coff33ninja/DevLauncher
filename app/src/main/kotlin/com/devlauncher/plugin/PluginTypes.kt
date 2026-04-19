@@ -11,7 +11,7 @@ interface UIPlugin : Plugin {
      * Called when the plugin's screen is displayed
      */
     @Composable
-    fun render()
+    fun Render()
     
     /**
      * Optional: Request a dedicated screen in the launcher

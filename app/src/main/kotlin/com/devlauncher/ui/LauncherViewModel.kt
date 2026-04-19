@@ -144,7 +144,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 /**
  * Search result types
  */
-sealed class SearchResult(val priority: Int) {
+sealed class SearchResult(open val priority: Int) {
     data class App(val app: AppInfo, override val priority: Int) : SearchResult(priority)
     data class Command(val registered: RegisteredCommand, override val priority: Int) : SearchResult(priority)
 }
