@@ -123,16 +123,14 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
                 app: app,
                 onTap: () async {
                   final launched = await appManager.launchApp(app.packageName);
-                  if (!launched && context.mounted) {
+                  if (launched != true && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to launch ${app.appName}'),
-                      ),
+                      SnackBar(content: Text('Failed to launch ${app.name}')),
                     );
                   }
                 },
                 onLongPress: () {
-                  _showAppOptions(context, app.packageName, app.appName);
+                  _showAppOptions(context, app.packageName, app.name);
                 },
               );
             },

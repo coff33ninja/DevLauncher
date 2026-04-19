@@ -1,9 +1,9 @@
-import 'package:device_apps/device_apps.dart';
+import 'package:installed_apps/app_info.dart';
 import 'package:flutter/material.dart';
 
 /// Horizontal row of favorite apps
 class FavoriteAppsRow extends StatelessWidget {
-  final List<Application> apps;
+  final List<AppInfo> apps;
   final Function(String) onAppTap;
   final Function(String) onAppLongPress;
 
@@ -60,11 +60,12 @@ class FavoriteAppsRow extends StatelessWidget {
         itemCount: apps.length,
         itemBuilder: (context, index) {
           final app = apps[index];
+          final packageName = app.packageName;
           return Padding(
             padding: const EdgeInsets.only(right: 16),
             child: InkWell(
-              onTap: () => onAppTap(app.packageName),
-              onLongPress: () => onAppLongPress(app.packageName),
+              onTap: () => onAppTap(packageName),
+              onLongPress: () => onAppLongPress(packageName),
               borderRadius: BorderRadius.circular(12),
               child: SizedBox(
                 width: 72,
@@ -86,11 +87,8 @@ class FavoriteAppsRow extends StatelessWidget {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: app is ApplicationWithIcon
-                            ? Image.memory(
-                                (app as ApplicationWithIcon).icon,
-                                fit: BoxFit.cover,
-                              )
+                        child: app.icon != null
+                            ? Image.memory(app.icon!, fit: BoxFit.cover)
                             : Container(
                                 color: Theme.of(
                                   context,
@@ -106,7 +104,7 @@ class FavoriteAppsRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      app.appName,
+                      app.name,
                       maxLines: 1,
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.ellipsis,

@@ -1,4 +1,5 @@
-import 'package:device_apps/device_apps.dart';
+import 'package:installed_apps/app_info.dart';
+import 'package:installed_apps/installed_apps.dart';
 import 'package:flutter/foundation.dart';
 import 'preferences_manager.dart';
 
@@ -6,19 +7,19 @@ import 'preferences_manager.dart';
 class AppManager extends ChangeNotifier {
   final PreferencesManager _prefsManager;
 
-  List<Application> _apps = [];
-  List<Application> _filteredApps = [];
+  List<AppInfo> _apps = [];
+  List<AppInfo> _filteredApps = [];
   bool _isLoading = false;
   String _searchQuery = '';
 
   AppManager(this._prefsManager);
 
-  List<Application> get apps => _filteredApps;
+  List<AppInfo> get apps => _filteredApps;
   bool get isLoading => _isLoading;
   String get searchQuery => _searchQuery;
 
   /// Get favorite apps
-  List<Application> getFavoriteApps() {
+  List<AppInfo> getFavoriteApps() {
     final favoritePackages = _prefsManager.getFavoriteApps();
     return _apps
         .where((app) => favoritePackages.contains(app.packageName))
@@ -26,9 +27,9 @@ class AppManager extends ChangeNotifier {
   }
 
   /// Get recent apps
-  List<Application> getRecentApps() {
+  List<AppInfo> getRecentApps() {
     final recentPackages = _prefsManager.getRecentApps();
-    final recentApps = <Application>[];
+    final recentApps = <AppInfo>[];
 
     // Maintain order from preferences
     for (final packageName in recentPackages) {
@@ -60,16 +61,12 @@ class AppManager extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Get all apps with launch intent (launchable apps)
-      _apps = await DeviceApps.getInstalledApplications(
-        includeAppIcons: true,
-        includeSystemApps: true,
-        onlyAppsWithLaunchIntent: true,
-      );
+      // Get all apps
+      _apps = await InstalledApps.getInstalledApps();
 
       // Sort alphabetically
       _apps.sort(
-        (a, b) => a.appName.toLowerCase().compareTo(b.appName.toLowerCase()),
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
       );
 
       _filteredApps = List.from(_apps);
@@ -91,7 +88,7 @@ class AppManager extends ChangeNotifier {
       _filteredApps = List.from(_apps);
     } else {
       _filteredApps = _apps.where((app) {
-        return app.appName.toLowerCase().contains(_searchQuery) ||
+        return app.name.toLowerCase().contains(_searchQuery) ||
             app.packageName.toLowerCase().contains(_searchQuery);
       }).toList();
     }
@@ -100,10 +97,10 @@ class AppManager extends ChangeNotifier {
   }
 
   /// Launch an application
-  Future<bool> launchApp(String packageName) async {
+  Future<bool?> launchApp(String packageName) async {
     try {
-      final success = await DeviceApps.openApp(packageName);
-      if (success) {
+      final success = await InstalledApps.startApp(packageName);
+      if (success == true) {
         // Add to recent apps
         await _prefsManager.addRecentApp(packageName);
       }
@@ -115,17 +112,16 @@ class AppManager extends ChangeNotifier {
   }
 
   /// Open app settings
-  Future<bool> openAppSettings(String packageName) async {
+  Future<void> openAppSettings(String packageName) async {
     try {
-      return await DeviceApps.openAppSettings(packageName);
+      InstalledApps.openSettings(packageName);
     } catch (e) {
       debugPrint('Error opening app settings: $e');
-      return false;
     }
   }
 
   /// Get app by package name
-  Application? getApp(String packageName) {
+  AppInfo? getApp(String packageName) {
     try {
       return _apps.firstWhere((app) => app.packageName == packageName);
     } catch (e) {

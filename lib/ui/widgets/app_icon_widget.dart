@@ -1,9 +1,9 @@
-import 'package:device_apps/device_apps.dart';
+import 'package:installed_apps/app_info.dart';
 import 'package:flutter/material.dart';
 
 /// Widget to display an app icon with name
 class AppIconWidget extends StatelessWidget {
-  final Application app;
+  final AppInfo app;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
@@ -41,11 +41,8 @@ class AppIconWidget extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: app is ApplicationWithIcon
-                    ? Image.memory(
-                        (app as ApplicationWithIcon).icon,
-                        fit: BoxFit.cover,
-                      )
+                child: app.icon != null
+                    ? Image.memory(app.icon!, fit: BoxFit.cover)
                     : Container(
                         color: Theme.of(context).colorScheme.primaryContainer,
                         child: Icon(
@@ -60,7 +57,7 @@ class AppIconWidget extends StatelessWidget {
             const SizedBox(height: 8),
             // App name
             Text(
-              app.appName,
+              app.name,
               maxLines: 2,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,

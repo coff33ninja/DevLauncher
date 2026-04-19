@@ -326,14 +326,12 @@ class _LauncherHomeState extends State<LauncherHome> {
                           final launched = await appManager.launchApp(
                             app.packageName,
                           );
-                          if (launched) {
+                          if (launched == true) {
                             _toggleSearch();
                           } else if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(
-                                  'Failed to launch ${app.appName}',
-                                ),
+                                content: Text('Failed to launch ${app.name}'),
                               ),
                             );
                           }
@@ -367,7 +365,7 @@ class _LauncherHomeState extends State<LauncherHome> {
             if (app != null)
               ListTile(
                 title: Text(
-                  app.appName,
+                  app.name,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 subtitle: Text(

@@ -8,8 +8,8 @@
       "version": "1.0.0+1",
       "dependencies": [
         "cupertino_icons",
-        "device_apps",
         "flutter",
+        "installed_apps",
         "provider",
         "shared_preferences"
       ],
@@ -66,8 +66,8 @@
       ]
     },
     {
-      "name": "device_apps",
-      "version": "2.2.0",
+      "name": "installed_apps",
+      "version": "2.1.1",
       "dependencies": [
         "flutter"
       ]
